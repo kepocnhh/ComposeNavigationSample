@@ -19,7 +19,7 @@ internal class MainActivity : AppCompatActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black),
+                        .background(App.Theme.background),
                 ) {
                     BackHandler {
                         finish()
