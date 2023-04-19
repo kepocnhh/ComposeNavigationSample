@@ -11,6 +11,7 @@ import androidx.compose.ui.text.TextStyle
 import test.android.cns.App
 import test.android.cns.presentation.module.noitems.NoItemsScreen
 import test.android.cns.presentation.util.navigation.ToScreen
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun RouterScreen() {
@@ -22,7 +23,10 @@ internal fun RouterScreen() {
         )
         val items = App.items
         if (items == null) {
-            ToScreen {
+            ToScreen(
+                delay = 2.seconds,
+                target = 0.25f,
+            ) {
                 NoItemsScreen()
             }
         } else {

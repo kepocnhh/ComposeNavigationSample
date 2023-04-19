@@ -22,42 +22,48 @@ import androidx.compose.ui.unit.dp
 import test.android.cns.App
 import test.android.cns.presentation.util.androidx.compose.foundation.catchClicks
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun ToScreen(
-    delay: Duration = 2.seconds,
+    delay: Duration = 250.milliseconds,
+    target: Float = 0f,
     content: @Composable () -> Unit,
 ) {
+    require(target in 0f..1f)
+    val logger = App.newLogger("[ToScreen]")
     val initialWidth = LocalConfiguration.current.screenWidthDp.dp
-    val targetWidth = initialWidth // todo orientation
+//    val targetWidth = initialWidth // todo orientation
+    val targetWidth = initialWidth * (1f - target)
     var actual by rememberSaveable { mutableStateOf(1f) }
     val animatable = remember { Animatable(initialValue = actual) }
-    val target = 0f
     val show = true // todo direction
     LaunchedEffect(Unit) {
-        val duration = delay * (actual - target).toDouble()
-        animatable.animateTo(
-            targetValue = target,
-            animationSpec = tween(
-                durationMillis = duration.inWholeMilliseconds.toInt(),
-                easing = LinearEasing
-            ),
-        )
+        if (actual - target > 0) {
+            val duration = delay * (actual - target).toDouble()
+            logger.debug("animate: $actual to $target $duration")
+            animatable.animateTo(
+                targetValue = target,
+                animationSpec = tween(
+                    durationMillis = duration.inWholeMilliseconds.toInt(),
+                    easing = LinearEasing
+                ),
+            )
+        }
     }
     Box(Modifier.fillMaxSize()) {
         actual = animatable.value
-        val alpha = actual - target
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(App.Theme.shadow.copy(alpha = alpha)),
+                .background(App.Theme.shadow.copy(alpha = actual)),
         )
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(targetWidth)
-                .offset(x = initialWidth * animatable.value + (initialWidth - targetWidth))
+                .offset(x = initialWidth * actual)
                 .catchClicks(),
         ) {
             content()
