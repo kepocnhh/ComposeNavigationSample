@@ -29,7 +29,7 @@ import test.android.cns.presentation.util.androidx.compose.foundation.catchClick
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
-internal class ScreenHolder {
+internal class ScreenHolderOld {
     class NextScreen(
         val delay: Duration = 250.milliseconds,
         val target: Float = 0f,
@@ -128,9 +128,9 @@ internal class ScreenHolder {
 }
 
 @Composable
-internal fun ScreenHolder(tag: String, content: @Composable ScreenHolder.() -> Unit) {
+internal fun ScreenHolderOld(tag: String, content: @Composable ScreenHolderOld.() -> Unit) {
     val initialWidth = LocalConfiguration.current.screenWidthDp.dp
-    val holder = remember { ScreenHolder() }
+    val holder = remember { ScreenHolderOld() }
     val next = holder.next.value
     val actual = rememberSaveable { mutableStateOf(1f) }
     Box(Modifier.fillMaxSize()) {
@@ -142,12 +142,104 @@ internal fun ScreenHolder(tag: String, content: @Composable ScreenHolder.() -> U
             content(holder)
         }
         if (next != null) {
-            ScreenHolder.ToScreen(
+            ScreenHolderOld.ToScreen(
                 delay = next.delay,
                 actual = actual,
                 target = next.target,
                 content = next.content,
             )
+        }
+    }
+}
+
+private class NextScreen(
+    val delay: Duration,
+    val target: Float,
+    val content: @Composable () -> Unit,
+)
+
+internal interface ScreenHolder {
+    fun toScreen(
+        delay: Duration = 250.milliseconds,
+        target: Float = 0f,
+        content: @Composable () -> Unit,
+    )
+}
+
+private suspend fun Animatable<Float, AnimationVector1D>.animate(
+    actual: Float,
+    target: Float,
+    delay: Duration,
+    easing: Easing = LinearEasing
+) {
+    if (actual - target <= 0) return
+    val duration = delay * (actual - target).toDouble()
+    animateTo(
+        targetValue = target,
+        animationSpec = tween(
+            durationMillis = duration.inWholeMilliseconds.toInt(),
+            easing = easing
+        ),
+    )
+}
+
+private typealias Next = @Composable () -> Unit
+
+@Composable
+internal fun ScreenHolder(content: @Composable ScreenHolder.() -> Unit) {
+    val logger = App.newLogger("[SH|TS]")
+    val actualState = rememberSaveable { mutableStateOf(1f) }
+    val targetState = rememberSaveable { mutableStateOf(1f) }
+    val delayState = rememberSaveable { mutableStateOf(250.milliseconds.inWholeMilliseconds) }
+    val initialWidth = LocalConfiguration.current.screenWidthDp.dp
+    val targetWidth = initialWidth * (1f - targetState.value)
+    val animatable = remember { Animatable(initialValue = actualState.value) }
+    val show = true // todo direction
+    val next = remember { mutableStateOf<Next?>(null) }
+    val holder = remember {
+        object : ScreenHolder {
+            override fun toScreen(
+                delay: Duration,
+                target: Float,
+                content: @Composable () -> Unit,
+            ) {
+                delayState.value = delay.inWholeMilliseconds
+                targetState.value = target
+                next.value = content
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        logger.debug("animate ${actualState.value} to ${targetState.value} ${delayState.value.milliseconds}")
+        animatable.animate(
+            actual = actualState.value,
+            target = targetState.value,
+            delay = delayState.value.milliseconds,
+        )
+    }
+    actualState.value = animatable.value
+    val alpha = 1f - actualState.value
+    Box(Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(x = initialWidth * actualState.value - initialWidth),
+        ) {
+            holder.content()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(App.Theme.shadow.copy(alpha = alpha)),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(targetWidth)
+                .offset(x = initialWidth * actualState.value)
+                .catchClicks(),
+        ) {
+            next.value?.invoke()
         }
     }
 }

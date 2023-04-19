@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun RouterScreen() {
-    ScreenHolder(tag = "Router") {
+    ScreenHolder {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -30,11 +30,11 @@ internal fun RouterScreen() {
             )
             val items = App.items
             if (items == null) {
-                ToScreen(
+                toScreen(
 //                    delay = 250.milliseconds,
 //                    delay = 1.seconds,
-                    delay = 4.seconds,
-                    target = 0.25f,
+//                    delay = 4.seconds,
+//                    target = 0.25f,
                 ) {
                     NoItemsScreen()
                 }
