@@ -3,6 +3,8 @@ package test.android.cns
 import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import test.android.cns.foundation.provider.logger.Logger
@@ -20,7 +22,7 @@ internal class App : Application() {
             }
         }
 
-        var items: List<String>? = null
+        val items: MutableState<List<String>?> = mutableStateOf(null)
     }
 
     object Theme {
@@ -29,6 +31,8 @@ internal class App : Application() {
 //        val foreground = Color.White
         val background = Color.White
         val foreground = Color.Black
+        val primary = Color.Blue
+
         @Composable
         fun Composition(content: @Composable () -> Unit) {
             CompositionLocalProvider(

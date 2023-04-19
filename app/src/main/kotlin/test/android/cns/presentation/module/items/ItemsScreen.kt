@@ -1,7 +1,6 @@
-package test.android.cns.presentation.module.noitems
+package test.android.cns.presentation.module.items
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,10 +17,8 @@ import androidx.compose.ui.unit.dp
 import test.android.cns.App
 
 @Composable
-internal fun NoItemsScreen(
-    onCreate: () -> Unit,
-) {
-    val logger = App.newLogger("[NoItems]")
+internal fun Items() {
+    val logger = App.newLogger("[Items]")
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -33,23 +30,10 @@ internal fun NoItemsScreen(
                 modifier = Modifier.fillMaxWidth()
                     .height(56.dp)
                     .wrapContentHeight(),
-                text = "no items",
+                text = "items",
                 style = TextStyle(
                     textAlign = TextAlign.Center,
                     color = App.Theme.foreground,
-                ),
-            )
-            BasicText(
-                modifier = Modifier.fillMaxWidth()
-                    .height(56.dp)
-                    .clickable {
-                        onCreate()
-                    }
-                    .wrapContentHeight(),
-                text = "+",
-                style = TextStyle(
-                    textAlign = TextAlign.Center,
-                    color = App.Theme.primary,
                 ),
             )
         }

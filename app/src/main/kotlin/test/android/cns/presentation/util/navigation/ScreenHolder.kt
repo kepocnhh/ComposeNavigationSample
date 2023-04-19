@@ -159,21 +159,69 @@ private class NextScreen(
 )
 
 internal interface ScreenHolder {
-    fun toScreen(
-        delay: Duration = 250.milliseconds,
-        target: Float = 0f,
+    @Composable
+    fun ToScreen(
+        tag: String,
+        delay: Duration,
+        target: Float,
         content: @Composable () -> Unit,
     )
+
+    @Composable
+    fun ToScreen(
+        tag: String,
+        target: Float,
+        content: @Composable () -> Unit,
+    ) {
+        ToScreen(
+            tag = tag,
+            delay = 250.milliseconds,
+            target = target,
+            content = content
+        )
+    }
+
+    @Composable
+    fun ToScreen(
+        tag: String,
+        delay: Duration,
+        content: @Composable () -> Unit,
+    ) {
+        ToScreen(
+            tag = tag,
+            delay = delay,
+            target = 0f,
+            content = content
+        )
+    }
+
+    @Composable
+    fun ToScreen(
+        tag: String,
+        content: @Composable () -> Unit,
+    ) {
+        ToScreen(
+            tag = tag,
+            target = 0f,
+            content = content
+        )
+    }
+
+    fun back(onFinish: () -> Unit = {})
 }
 
 private suspend fun Animatable<Float, AnimationVector1D>.animate(
     actual: Float,
     target: Float,
     delay: Duration,
-    easing: Easing = LinearEasing
+    easing: Easing = LinearEasing,
+    onFinish: () -> Unit,
 ) {
-    if (actual - target <= 0) return
-    val duration = delay * (actual - target).toDouble()
+    if (actual == target) {
+//        onFinish()
+        return
+    }
+    val duration = delay * kotlin.math.abs(actual - target).toDouble()
     animateTo(
         targetValue = target,
         animationSpec = tween(
@@ -184,46 +232,73 @@ private suspend fun Animatable<Float, AnimationVector1D>.animate(
 }
 
 private typealias Next = @Composable () -> Unit
+private typealias Fun = () -> Unit
 
 @Composable
 internal fun ScreenHolder(content: @Composable ScreenHolder.() -> Unit) {
     val logger = App.newLogger("[SH|TS]")
     val actualState = rememberSaveable { mutableStateOf(1f) }
     val targetState = rememberSaveable { mutableStateOf(1f) }
+    val onFinishState = rememberSaveable { mutableStateOf<Fun?>(null) }
     val delayState = rememberSaveable { mutableStateOf(250.milliseconds.inWholeMilliseconds) }
     val initialWidth = LocalConfiguration.current.screenWidthDp.dp
     val targetWidth = initialWidth * (1f - targetState.value)
     val animatable = remember { Animatable(initialValue = actualState.value) }
-    val show = true // todo direction
-    val next = remember { mutableStateOf<Next?>(null) }
+    actualState.value = animatable.value
+    val alpha = 1f - actualState.value
+    val screens = remember { mutableStateOf<Next?>(null) }
     val holder = remember {
         object : ScreenHolder {
-            override fun toScreen(
+            @Composable
+            override fun ToScreen(
+                tag: String,
                 delay: Duration,
                 target: Float,
                 content: @Composable () -> Unit,
             ) {
-                delayState.value = delay.inWholeMilliseconds
-                targetState.value = target
-                next.value = content
+                logger.debug("to screen: target $target, delay: $delay...")
+                delayState.value = rememberSaveable(tag) { delay.inWholeMilliseconds }
+                targetState.value = rememberSaveable(tag) { target }
+                screens.value = remember(tag) { content }
+            }
+
+            override fun back(
+                onFinish: () -> Unit,
+            ) {
+                logger.debug("on back...")
+                onFinishState.value = onFinish
+                targetState.value = 1f
             }
         }
     }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(actualState.value) {
+        if (actualState.value == targetState.value) {
+            logger.debug("on finish ${actualState.value} to ${targetState.value} ${delayState.value.milliseconds}")
+            onFinishState.value?.invoke()
+        }
+    }
+    LaunchedEffect(targetState.value) {
         logger.debug("animate ${actualState.value} to ${targetState.value} ${delayState.value.milliseconds}")
         animatable.animate(
             actual = actualState.value,
             target = targetState.value,
             delay = delayState.value.milliseconds,
+            onFinish = {
+//                logger.debug("on finish...")
+//                onFinishState.value?.invoke()
+            }
         )
     }
-    actualState.value = animatable.value
-    val alpha = 1f - actualState.value
+//    logger.debug("actual ${actualState.value}")
+//    logger.debug("target ${targetState.value}")
+//    logger.debug("alpha $alpha")
     Box(Modifier.fillMaxSize()) {
+        val offset = initialWidth * actualState.value - initialWidth
+//        logger.debug("offset $offset")
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .offset(x = initialWidth * actualState.value - initialWidth),
+                .offset(x = offset),
         ) {
             holder.content()
             Box(
@@ -232,14 +307,17 @@ internal fun ScreenHolder(content: @Composable ScreenHolder.() -> Unit) {
                     .background(App.Theme.shadow.copy(alpha = alpha)),
             )
         }
+        val nextOffset = initialWidth * actualState.value
+//        logger.debug("next offset $nextOffset")
         Box(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(targetWidth)
-                .offset(x = initialWidth * actualState.value)
+                .offset(x = nextOffset)
                 .catchClicks(),
         ) {
-            next.value?.invoke()
+//            logger.debug("recompose...")
+            screens.value?.invoke()
         }
     }
 }
